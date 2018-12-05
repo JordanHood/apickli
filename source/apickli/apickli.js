@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const jsonSchemaValidator = require('is-my-json-valid');
 const spec = require('swagger-tools').specs.v2;
+const SchemaParser = require('json-schema-ref-parser');
 
 let accessToken;
 const globalVariables = {};
@@ -379,11 +380,16 @@ Apickli.prototype.validateResponseWithSchema = function(schemaFile, callback) {
         } else {
             const jsonSchema = JSON.parse(jsonSchemaString);
             const responseBody = JSON.parse(self.getResponseObject().body);
-
-            const validate = jsonSchemaValidator(jsonSchema, {verbose: true});
-            const success = validate(responseBody);
-            callback(getAssertionResult(success, validate.errors, null, self));
-       }
+            const parser = new SchemaParser();
+            parser.dereference(jsonSchema, function(error, schema) {
+                if (error) {
+                    callback(err);
+                }
+                const validate = jsonSchemaValidator(schema, {verbose: true});
+                const success = validate(responseBody);
+                callback(getAssertionResult(success, validate.errors, null, self));
+            });
+        }
     });
 };
 
